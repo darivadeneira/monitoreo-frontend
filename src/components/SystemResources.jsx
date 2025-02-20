@@ -156,7 +156,7 @@ const SystemResources = ({ view }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-white p-4 rounded-lg shadow">
                 <p className="font-bold">CPU:</p>
-                <p>{resources.cpu}%</p>
+                <p>{resources.cpu.cpu_percentage}%</p>
               </div>
               <div className="bg-white p-4 rounded-lg shadow">
                 <p className="font-bold">Memoria:</p>

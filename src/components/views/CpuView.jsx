@@ -49,13 +49,22 @@ const CpuView = ({ resources, historicalData }) => {
       <div className="grid grid-cols-1 gap-4">
         <div className='flex flex-1 space-between gap-4 w-full'>
           <div className="bg-white p-4 rounded-lg shadow">
-            <p><strong>CPU Uso Actual:</strong> {resources.cpu}%</p>
+            <p><strong>CPU Uso Actual:</strong> {resources.cpu.cpu_percentage}%</p>
             <p><strong>Procesos Activos:</strong> {resources.process_act}</p>
+            <p><strong>Frecuencia de trabajo:</strong> {resources.cpu.cpu_frequency.current} GHz</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <CircularProgress
               title="CPU"
-              value={resources.cpu}
+              value={resources.cpu.cpu_percentage}
+              color="#FF6384"
+              size={100} // Add size prop to CircularProgress component
+            />
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <CircularProgress
+              title="CPU"
+              value={resources.cpu.cpu_temperature}
               color="#FF6384"
               size={100} // Add size prop to CircularProgress component
             />
@@ -64,7 +73,10 @@ const CpuView = ({ resources, historicalData }) => {
         <div className="bg-white p-4 rounded-lg shadow">
           <ResourceChart
             title="CPU Usage %"
-            data={historicalData.cpu}
+            data={{
+              labels: historicalData.cpu.labels,
+              values: historicalData.cpu.values.map(val => (val.cpu_percentage))
+            }}
             color="#FF6384"
           />
         </div>
