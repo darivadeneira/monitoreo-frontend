@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResourceChart } from '../graficas/ResourceCharts';
+import { CircularProgress } from '../graficas/CircularProgress';
 import {
   useReactTable,
   getCoreRowModel,
@@ -18,7 +19,6 @@ const CpuView = ({ resources, historicalData }) => {
       header: "PID",
       accessorKey: "pid",
       sortingFn: (rowA, rowB) => {
-        // Asegurarse de que los valores sean números
         const a = parseInt(rowA.original.pid, 10);
         const b = parseInt(rowB.original.pid, 10);
         return isNaN(a) || isNaN(b) ? 0 : a - b;
@@ -47,11 +47,20 @@ const CpuView = ({ resources, historicalData }) => {
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4">Monitoreo de CPU</h2>
       <div className="grid grid-cols-1 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p><strong>CPU Uso Actual:</strong> {resources.cpu}%</p>
-          <p><strong>Procesos Activos:</strong> {resources.process_act}</p>
+        <div className='flex flex-1 space-between gap-4 w-full'>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <p><strong>CPU Uso Actual:</strong> {resources.cpu}%</p>
+            <p><strong>Procesos Activos:</strong> {resources.process_act}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <CircularProgress
+              title="CPU"
+              value={resources.cpu}
+              color="#FF6384"
+              size={100} // Add size prop to CircularProgress component
+            />
+          </div>
         </div>
-        
         <div className="bg-white p-4 rounded-lg shadow">
           <ResourceChart
             title="CPU Usage %"
@@ -61,7 +70,8 @@ const CpuView = ({ resources, historicalData }) => {
         </div>
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
-        <p className="text-sm text-gray-500">
+          <h3 className="text-xl font-bold p-4">Procesos</h3>
+          <p className="text-sm text-gray-500 ml-2">
             Mostrando página {table.getState().pagination.pageIndex + 1} de{' '}
             {table.getPageCount()}
           </p>
@@ -100,7 +110,7 @@ const CpuView = ({ resources, historicalData }) => {
               ))}
             </tbody>
           </table>
-          
+
           {/* Controles de paginación */}
           <div className="flex items-center justify-between p-4 border-t">
             <div className="flex gap-2">

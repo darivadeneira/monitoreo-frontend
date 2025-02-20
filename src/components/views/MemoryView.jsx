@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ResourceChart } from '../graficas/ResourceCharts';
 import {
   useReactTable,
@@ -33,11 +33,14 @@ const MemoryView = ({ resources, historicalData }) => {
     {
       header: "Uso de Memoria",
       accessorKey: "memory_mb",
+      cell: ({ getValue }) => `${getValue()} MB`,
     }
   ];
+  
+  const data = useMemo(() => resources?.memory.processes || [], [resources?.memory.processes]);
 
   const table = useReactTable({
-    data: resources?.memory_processes || [],
+    data: data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -53,7 +56,7 @@ const MemoryView = ({ resources, historicalData }) => {
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4">Monitoreo de Memoria</h2>
       <div className="grid grid-cols-1 gap-4">
-        <div className='flex flex-col gap-4'>
+        <div className='flex flex-1 space-between gap-4'>
           <div className="bg-white p-4 rounded-lg shadow">
             <p><strong>Memoria Usada:</strong> {resources.memory.used} MB</p>
             <p><strong>Memoria Total:</strong> {resources.memory.total} MB</p>
@@ -64,12 +67,13 @@ const MemoryView = ({ resources, historicalData }) => {
               title="Memoria"
               value={resources.memory.percentage}
               color="#36A2EB"
-              size={300}
+              size={100}
             />
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-2xl lg:text-3xl font-bold mb-2">Uso de Memoria</h3>
           <ResourceChart
             title="Memory Usage"
             data={{
@@ -82,6 +86,7 @@ const MemoryView = ({ resources, historicalData }) => {
 
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
+          <h3 className="text-2xl font-bold mb-4 p-2">Procesos de Memoria</h3>
           <p className="text-sm text-gray-500">
             Mostrando página {table.getState().pagination.pageIndex + 1} de{' '}
             {table.getPageCount()}
