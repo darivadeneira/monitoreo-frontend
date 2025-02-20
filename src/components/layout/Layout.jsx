@@ -8,20 +8,24 @@ import Sidebar from "../shared/Sidebar";
 export const Layout = () => {
     return (
         <Router>
-            <div className="flex min-h-screen">
-                <Sidebar />
-                <div className="flex flex-col flex-1 ml-64">
-                    <Nav />
+            <div className="flex min-h-screen flex-col">
+                <Nav />
+                <div className="flex flex-1 p-4 bg-gray-50">
+                    {/* Sidebar a la izquierda con ancho fijo */}
+                    <Sidebar />
+
+                    {/* Contenedor de contenido principal */}
                     <main className="flex-1 p-4 bg-gray-50">
                         <Routes>
+                            <Route path="/" element={<Navigate to="/overview" />} />
                             <Route path="/overview" element={<SystemResources view="overview" />} />
                             <Route path="/cpu" element={<SystemResources view="cpu" />} />
                             <Route path="/memory" element={<SystemResources view="memory" />} />
-                            <Route path="/" element={<Navigate to="/overview" replace />} />
+                            <Route path="*" element={<Navigate to="/overview" />} />
                         </Routes>
                     </main>
-                    <Footer />
                 </div>
+                <Footer />
             </div>
         </Router>
     );
