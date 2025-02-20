@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { socket, connectSocket } from "../services/socketService";
-import { ResourceChart } from "./ResourceCharts";
+import { ResourceChart } from "./graficas/ResourceCharts";
+import { CircularProgress } from "./graficas/CircularProgress";
 
 const MAX_DATA_POINTS = 30;
 
@@ -9,28 +10,30 @@ const SystemResources = () => {
   const [error, setError] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewData, setViewData] = useState("chart");
+
   const [historicalData, setHistoricalData] = useState({
     cpu: { labels: [], values: [] },
     memory: { labels: [], values: [] },
-    disk: { labels: [], values: [] }
+    disk: { labels: [], values: [] },
   });
 
   const updateHistoricalData = (newData) => {
     const currentTime = new Date().toLocaleTimeString();
 
-    setHistoricalData(prev => ({
+    setHistoricalData((prev) => ({
       cpu: {
         labels: [...prev.cpu.labels.slice(-MAX_DATA_POINTS), currentTime],
-        values: [...prev.cpu.values.slice(-MAX_DATA_POINTS), newData.cpu]
+        values: [...prev.cpu.values.slice(-MAX_DATA_POINTS), newData.cpu],
       },
       memory: {
         labels: [...prev.memory.labels.slice(-MAX_DATA_POINTS), currentTime],
-        values: [...prev.memory.values.slice(-MAX_DATA_POINTS), newData.memory]
+        values: [...prev.memory.values.slice(-MAX_DATA_POINTS), newData.memory],
       },
       disk: {
         labels: [...prev.disk.labels.slice(-MAX_DATA_POINTS), currentTime],
-        values: [...prev.disk.values.slice(-MAX_DATA_POINTS), newData.disk]
-      }
+        values: [...prev.disk.values.slice(-MAX_DATA_POINTS), newData.disk],
+      },
     }));
   };
 
@@ -73,11 +76,12 @@ const SystemResources = () => {
           await connectSocket();
         }
 
+        setIsConnected(socket.connected);
+
         socket.off("connect").on("connect", handleConnect);
         socket.off("disconnect").on("disconnect", handleDisconnect);
         socket.off("connect_error").on("connect_error", handleConnectError);
         socket.off("resources").on("resources", handleResources);
-
       } catch (error) {
         if (isSubscribed) {
           setIsConnected(false);
@@ -101,12 +105,12 @@ const SystemResources = () => {
   const handleReconnect = async () => {
     setIsLoading(true);
     setResources(null);
-    
+
     try {
       if (socket.connected) {
         socket.disconnect();
       }
-      
+
       await connectSocket();
       setError(null);
     } catch (error) {
@@ -118,17 +122,15 @@ const SystemResources = () => {
   };
 
   return (
-    <div className=" flex flex-col items-center justify-center w-full">
-      <div className="mx-auto p-4">
-        <h1 className="text-2xl font-bold text-center">Monitoreo de Recursos</h1>
-      </div> 
-      <div className="mx-auto p-4 items-center justify-center">
-        <div className="flex flex-row justify-center items-center mb-4 gap-4">
-          <p className="text-xl">
-            Estado de conexión: {isConnected ? '🟢 Conectado' : '🔴 Desconectado'}
+    <div className="flex flex-col items-center justify-center w-full min-h-[400px]">
+      <div className="w-full max-w-7xl mx-auto p-6">
+        {/* Estado de conexión */}
+        <div className="flex flex-col md:flex-row mb-4 gap-4">
+          <p className="text-lg md:text-xl">
+            Estado de conexión: {isConnected ? "🟢 Conectado" : "🔴 Desconectado"}
           </p>
-          <button 
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded"
             onClick={handleReconnect}
             disabled={isLoading}
           >
@@ -152,43 +154,73 @@ const SystemResources = () => {
           </div>
         ) : (
           <div>
-            <div className="mb-6">
-              <h3>Valores Actuales:</h3>
-              <p><strong>CPU:</strong> {resources.cpu}%</p>
-              <p><strong>Memoria:</strong> {Math.round(resources.memory)} MB</p>
-              <p><strong>Disco:</strong> {Math.round(resources.disk)} GB</p>
-            </div>
-            
-            {/* Primera fila: CPU y Memory */}
-            <div className="flex flex-row mb-6">
-              <div className="w-[600px]">
-                <h3 className="text-3xl font-bold mb-2">CPU Usage</h3>
-                <ResourceChart
-                  title="CPU %"
-                  data={historicalData.cpu}
-                  color="#FF6384"
-                />
-              </div>
-
-              <div className="w-[600px]">
-                <h3 className="text-3xl font-bold mb-2">Memory Usage</h3>
-                <ResourceChart
-                  title="Memory (MB)"
-                  data={historicalData.memory}
-                  color="#36A2EB"
-                />
-              </div>
+            <div className="mb-4">
+              <label className="mr-2 font-bold">Vista:</label>
+              <select
+                value={viewData}
+                onChange={(e) => setViewData(e.target.value)}
+                className="border p-1 rounded"
+              >
+                <option value="chart">Gráfica</option>
+                <option value="circular">Circular</option>
+              </select>
             </div>
 
-            {/* Segunda fila: Disk */}
-            <div className="w-[600px]">
-              <h3 className="text-3xl font-bold mb-2">Disk Usage</h3>
-              <ResourceChart
-                title="Disk (GB)"
-                data={historicalData.disk}
-                color="#4BC0C0"
-              />
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <p>
+                <strong>CPU:</strong> {resources.cpu}%
+              </p>
+              <p>
+                <p><strong>Memoria:</strong> {resources.memory.used} MB / {resources.memory.total} MB ({resources.memory.percentage}%)</p>
+              </p>
             </div>
+
+            {/* Mostrar solo CircularProgress cuando la opción circular esté seleccionada */}
+            {viewData === "circular" ? (
+              <div className="mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="w-full h-[400px] flex flex-col items-center justify-center bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-2xl lg:text-3xl font-bold mb-4">USO CPU</h3>
+                    <CircularProgress 
+                      title="CPU" 
+                      value={resources.cpu} 
+                      color="#FF6384"
+                      size={300} // Add size prop to CircularProgress component
+                    />
+                  </div>
+
+                  <div className="w-full h-[400px] flex flex-col items-center justify-center bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-2xl lg:text-3xl font-bold mb-4">USO MEMORIA</h3>
+                    <CircularProgress 
+                      title="Memoria" 
+                      value={resources.memory.percentage} 
+                      color="#36A2EB"
+                      size={300}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6">
+                {/* Mostrar gráficas de líneas solo si la opción no es circular */}
+                <div className="flex flex-col lg:flex-row mb-6 gap-4">
+                  <div className="w-full lg:w-[600px]">
+                    <h3 className="text-2xl lg:text-3xl font-bold mb-2">USO CPU</h3>
+                    <ResourceChart title="CPU %" data={historicalData.cpu} color="#FF6384" />
+                  </div>
+
+                  <div className="w-full lg:w-[600px]">
+                    <h3 className="text-2xl lg:text-3xl font-bold mb-2">USO MEMORIA</h3>
+                    <ResourceChart title="Memory (%)" data={{
+                      labels: historicalData.memory.labels,
+                      values: historicalData.memory.values.map(val => (val.percentage))
+                    }} color="#36A2EB" />
+
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
       </div>
