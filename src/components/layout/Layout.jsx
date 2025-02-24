@@ -5,7 +5,7 @@ import SystemResources from "../SystemResources";
 import Nav from "../shared/Nav";
 import Sidebar from "../shared/Sidebar";
 
-export const Layout = () => {
+const Layout = () => {
     return (
         <Router>
             <div className="flex min-h-screen flex-col">
@@ -21,6 +21,7 @@ export const Layout = () => {
                             <Route path="/overview" element={<SystemResources view="overview" />} />
                             <Route path="/cpu" element={<SystemResources view="cpu" />} />
                             <Route path="/memory" element={<SystemResources view="memory" />} />
+                            <Route path="/network" element={<SystemResources view="network" />} />
                             <Route path="*" element={<Navigate to="/overview" />} />
                         </Routes>
                     </main>
@@ -30,3 +31,5 @@ export const Layout = () => {
         </Router>
     );
 };
+
+export default Layout;

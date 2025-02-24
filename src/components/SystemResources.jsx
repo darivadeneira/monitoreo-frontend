@@ -4,6 +4,7 @@ import { ResourceChart } from "./graficas/ResourceCharts";
 import { CircularProgress } from "./graficas/CircularProgress";
 import CpuView from './views/CpuView';
 import MemoryView from './views/MemoryView';
+import NetworkView from './views/NetworkView';  // Add import
 import { useLocation } from 'react-router-dom';
 
 const MAX_DATA_POINTS = 30;
@@ -20,6 +21,7 @@ const SystemResources = ({ view }) => {
     cpu: { labels: [], values: [] },
     memory: { labels: [], values: [] },
     disk: { labels: [], values: [] },
+    network: { labels: [], values: [] }, // Add network historical data
   });
 
   const updateHistoricalData = (newData) => {
@@ -37,6 +39,10 @@ const SystemResources = ({ view }) => {
       disk: {
         labels: [...prev.disk.labels.slice(-MAX_DATA_POINTS), currentTime],
         values: [...prev.disk.values.slice(-MAX_DATA_POINTS), newData.disk],
+      },
+      network: {
+        labels: [...prev.network.labels.slice(-MAX_DATA_POINTS), currentTime],
+        values: [...prev.network.values.slice(-MAX_DATA_POINTS), newData.network],
       },
     }));
   };
@@ -149,11 +155,13 @@ const SystemResources = ({ view }) => {
         return <CpuView resources={resources} historicalData={historicalData} />;
       case 'memory':
         return <MemoryView resources={resources} historicalData={historicalData} />;
+      case 'network':
+        return <NetworkView resources={resources} historicalData={historicalData} />;  // Add network case
       default:
         return (
           <div className="w-full">
             {/* Información de recursos en cards responsivas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-white p-4 rounded-lg shadow">
                 <p className="font-bold">CPU:</p>
                 <p>{resources.cpu.cpu_percentage}%</p>
@@ -166,6 +174,12 @@ const SystemResources = ({ view }) => {
                 <p className="font-bold">Porcentaje Memoria:</p>
                 <p>{resources.memory.percentage}%</p>
               </div>
+              {/* New network card */}
+              <div className="bg-white p-4 rounded-lg shadow">
+                <p className="font-bold">Red:</p>
+                <p>↑ {resources.network.upload_speed} Mbps</p>
+                <p>↓ {resources.network.download_speed} Mbps</p>
+              </div> 
             </div>
 
             {/* Selector de vista movido al centro */}
@@ -189,7 +203,7 @@ const SystemResources = ({ view }) => {
                   <h3 className="text-xl md:text-2xl font-bold mb-4">USO CPU</h3>
                   <CircularProgress 
                     title="CPU" 
-                    value={resources.cpu} 
+                    value={resources.cpu.cpu_percentage} 
                     color="#FF6384"
                     size={window.innerWidth < 768 ? 200 : 300}
                   />
@@ -210,7 +224,10 @@ const SystemResources = ({ view }) => {
                 <div className="w-full">
                   <h3 className="text-xl md:text-2xl font-bold mb-2">USO CPU</h3>
                   <div className="bg-white p-4 rounded-lg shadow">
-                    <ResourceChart title="CPU %" data={historicalData.cpu} color="#FF6384" />
+                    <ResourceChart title="CPU %" data={{
+                      labels: historicalData.cpu.labels,
+                      values: historicalData.cpu.values.map(val => (val.cpu_percentage))
+                    }} color="#4CAF50" />
                   </div>
                 </div>
 
