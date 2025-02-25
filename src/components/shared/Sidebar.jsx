@@ -9,6 +9,7 @@ const Sidebar = () => {
     { path: '/overview', label: 'Vista General', icon: '📈' },
     { path: '/cpu', label: 'CPU', icon: '📊' },
     { path: '/memory', label: 'Memoria', icon: '💾' },
+    { path: '/network', label: 'Red', icon: '🌐' },
   ];
 
   return (

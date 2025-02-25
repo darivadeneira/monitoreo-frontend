@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ResourceChart } from '../graficas/ResourceCharts';
+import { AlertBanner } from '../alerts/AlertBanner';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,8 +10,42 @@ import {
 } from "@tanstack/react-table";
 
 import { CircularProgress } from "../graficas/CircularProgress";
+import { getStoredThreshold, storeThreshold, MEMORY_THRESHOLD_KEY } from '../../services/thresholdService';
+import { postAlert } from '../../api/alerts'; 
 
 const MemoryView = ({ resources, historicalData }) => {
+  const [showAlert, setShowAlert] = useState(false);
+  const [thresholdGB, setThresholdGB] = useState(() => getStoredThreshold(MEMORY_THRESHOLD_KEY) || 4);
+
+  // Agregar useEffect para monitorear el uso de memoria
+  useEffect(() => {
+    const thresholdMB = thresholdGB * 1024;
+    if (resources.memory.used >= thresholdMB) {
+      setShowAlert(true);
+      
+      // Llamar a la API para crear una alerta
+      postAlert({
+        resource_type: "Memory",
+        threshold: thresholdGB,
+        current_value: resources.memory.used,
+      });
+
+    } else {
+      setShowAlert(false);
+    }
+  }, [resources.memory.used, thresholdGB]);
+
+  const handleThresholdChange = (e) => {
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    const numericValue = parseFloat(value);
+    
+    if (value === '' || value === '.') {
+      setThresholdGB(0);
+    } else if (!isNaN(numericValue) && numericValue >= 0) {
+      setThresholdGB(numericValue);
+      storeThreshold(MEMORY_THRESHOLD_KEY, numericValue);
+    }
+  };
 
   const columns = [
     {
@@ -52,22 +87,63 @@ const MemoryView = ({ resources, historicalData }) => {
     },
   });
 
+  // Obtener el color basado en el estado de alerta
+  const getChartColor = () => {
+    const thresholdMB = thresholdGB * 1024;
+    return resources.memory.used >= thresholdMB ? '#DC2626' : '#36A2EB';  // Usando el mismo verde que CPU
+  };
+
+  const currentColor = getChartColor();
+
   return (
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4">Monitoreo de Memoria</h2>
+      {showAlert && (
+        <AlertBanner 
+          message={`¡Alerta! El uso de Memoria ha superado ${thresholdGB} GB`}
+          type="error" 
+        />
+      )}
       <div className="grid grid-cols-1 gap-4">
-        <div className='flex flex-1 space-between gap-4'>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
           <div className="bg-white p-4 rounded-lg shadow">
-            <p><strong>Memoria Usada:</strong> {resources.memory.used} MB</p>
-            <p><strong>Memoria Total:</strong> {resources.memory.total} MB</p>
-            <p><strong>Porcentaje Uso:</strong> {resources.memory.percentage}%</p>
+            <p><strong>Memoria Usada:</strong> {(resources.memory.used)} GB</p>
+            <p><strong>Memoria Total:</strong> {(resources.memory.total / 1024).toFixed(2)} GB</p>
+            <p><strong>Porcentaje Uso:</strong> {resources.memory.percentage.toFixed(2)}%</p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Límite de alerta Memoria (GB):
+              </label>
+              <input
+                type="text"
+                className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={thresholdGB}
+                onChange={handleThresholdChange}
+                placeholder="Ingrese valor en GB"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                {`${(thresholdGB * 1024).toFixed(2)} MB`}
+              </p>
+            </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-white p-4 rounded-lg shadow flex flex-col items-center justify-center">
+            <h3 className="text-xl font-bold mb-2">Uso de Memoria</h3>
             <CircularProgress
               title="Memoria"
               value={resources.memory.percentage}
-              color="#36A2EB"
-              size={100}
+              color={currentColor}
+              size={180}
+              warningThreshold={resources.memory.used >= thresholdGB * 1024 ? 0 : 101}
+              onThresholdExceeded={setShowAlert}
+            />
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow flex flex-col items-center justify-center">
+            <h3 className="text-xl font-bold mb-2">Memoria Libre</h3>
+            <CircularProgress
+              title="Libre"
+              value={100 - resources.memory.percentage}
+              color={currentColor}
+              size={180}
             />
           </div>
         </div>
@@ -80,10 +156,10 @@ const MemoryView = ({ resources, historicalData }) => {
               labels: historicalData.memory.labels,
               values: historicalData.memory.values.map(val => (val.percentage))
             }}
-            color="#36A2EB"
+            color={currentColor}
+            warningThreshold={thresholdGB * 1024} // Pasamos el umbral en MB
           />
         </div>
-
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <h3 className="text-2xl font-bold mb-4 p-2">Procesos de Memoria</h3>

@@ -1,33 +1,61 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
 
-export const CircularProgress = ({ value, maxValue = 100, size = 128, color = "#3B82F6" }) => {
-  const percentage = (value / maxValue) * 100;
+export const CircularProgress = ({ 
+  title, 
+  value, 
+  color, 
+  size = 200, 
+  suffix = '%',
+  warningThreshold,
+  onThresholdExceeded 
+}) => {
+  const [currentColor, setCurrentColor] = useState(color);
+  
+  useEffect(() => {
+    if (warningThreshold && value >= warningThreshold) {
+      setCurrentColor('#DC2626');
+      onThresholdExceeded?.(true); // Indicamos que se excedió el umbral
+    } else {
+      setCurrentColor(color);
+      onThresholdExceeded?.(false); // Indicamos que estamos por debajo del umbral
+    }
+  }, [value, warningThreshold, color, onThresholdExceeded]);
+
+  const radius = size * 0.35;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (value / 100) * circumference;
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg className="w-full h-full" viewBox="0 0 100 100">
-        <circle 
-          strokeWidth="10" 
-          stroke="#E5E7EB" // Color gris claro para el fondo
-          fill="transparent" 
-          r="40" 
-          cx="50" 
-          cy="50" 
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90 w-full h-full">
+        <circle
+          className="text-gray-200"
+          strokeWidth="10"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
         />
         <circle
+          className="transition-all duration-300 ease-in-out"
           strokeWidth="10"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
           strokeLinecap="round"
-          stroke={color} // Usar el color directamente aquí
+          stroke={currentColor}
           fill="transparent"
-          r="40"
-          cx="50"
-          cy="50"
-          strokeDasharray="251.2"
-          strokeDashoffset={(1 - percentage / 100) * 251.2}
-          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
         />
       </svg>
-      <span className="absolute text-2xl font-bold">{Math.round(percentage)}%</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold" style={{ color: currentColor }}>
+          {Number(value).toFixed(2)}{suffix}
+        </span>
+        <span className="text-sm text-gray-500">{title}</span>
+      </div>
     </div>
   );
 };
