@@ -1,4 +1,6 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext } from 'react';
+import { disconnectSocket } from '../services/socketService';
+import { authService } from '../api/authService';
 
 const AuthContext = createContext(null);
 
@@ -14,8 +16,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Primero desconectar el socket
+    disconnectSocket();
+    // Luego limpiar datos de autenticación
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    // Llamar al logout del servicio
+    authService.logout();
   };
 
   return (

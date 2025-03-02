@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../api/authService';
+import { useAuth } from '../../context/AuthContext';
 
 const LoginRegister = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,13 +16,14 @@ const LoginRegister = () => {
     try {
       if (isLogin) {
         const response = await authService.login({ username, password });
-        login({ username: response.user });
+        // Asegurarse de que el objeto user completo se pasa al contexto
+        login(response.user);
       } else {
         await authService.register({ username, password });
         setIsLogin(true);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || 'Error en la autenticación');
     }
   };
 

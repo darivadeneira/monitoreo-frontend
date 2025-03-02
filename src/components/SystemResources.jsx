@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { socket, connectSocket } from "../services/socketService";
+import { socket, connectSocket, getSocket } from "../services/socketService";
 import { ResourceChart } from "./graficas/ResourceCharts";
 import { CircularProgress } from "./graficas/CircularProgress";
 import CpuView from './views/CpuView';
 import MemoryView from './views/MemoryView';
 import NetworkView from './views/NetworkView';  // Add import
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const MAX_DATA_POINTS = 30;
 
 const SystemResources = ({ view }) => {
   const location = useLocation();
+  const { user } = useAuth();
   const [resources, setResources] = useState(null);
   const [error, setError] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -49,6 +51,7 @@ const SystemResources = ({ view }) => {
 
   useEffect(() => {
     let isSubscribed = true;
+    let currentSocket = null;
 
     const handleResources = (data) => {
       if (isSubscribed) {
@@ -61,7 +64,7 @@ const SystemResources = ({ view }) => {
       if (isSubscribed) {
         setIsConnected(true);
         setError(null);
-        socket.emit("get_resources");
+        currentSocket?.emit("get_resources");
       }
     };
 
@@ -80,18 +83,26 @@ const SystemResources = ({ view }) => {
       }
     };
 
+    const setupSocketListeners = (socket) => {
+      if (!socket) return;
+      
+      socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("connect_error", handleConnectError);
+      socket.on("resources", handleResources);
+    };
+
     const connect = async () => {
       try {
-        if (!socket.connected) {
-          await connectSocket();
+        if (!user) {
+          throw new Error('No hay usuario autenticado');
         }
 
-        setIsConnected(socket.connected);
-
-        socket.off("connect").on("connect", handleConnect);
-        socket.off("disconnect").on("disconnect", handleDisconnect);
-        socket.off("connect_error").on("connect_error", handleConnectError);
-        socket.off("resources").on("resources", handleResources);
+        currentSocket = await connectSocket();
+        if (currentSocket) {
+          setupSocketListeners(currentSocket);
+          setIsConnected(currentSocket.connected);
+        }
       } catch (error) {
         if (isSubscribed) {
           setIsConnected(false);
@@ -105,12 +116,14 @@ const SystemResources = ({ view }) => {
 
     return () => {
       isSubscribed = false;
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off("connect_error", handleConnectError);
-      socket.off("resources", handleResources);
+      if (currentSocket) {
+        currentSocket.off("connect", handleConnect);
+        currentSocket.off("disconnect", handleDisconnect);
+        currentSocket.off("connect_error", handleConnectError);
+        currentSocket.off("resources", handleResources);
+      }
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     console.log("Current view:", view); // Para debug
@@ -122,12 +135,32 @@ const SystemResources = ({ view }) => {
     setResources(null);
 
     try {
-      if (socket.connected) {
-        socket.disconnect();
+      // Desconectar socket existente
+      const currentSocket = getSocket();
+      if (currentSocket) {
+        currentSocket.removeAllListeners();
+        currentSocket.close();
       }
 
-      await connectSocket();
+      // Crear nueva conexión
+      const newSocket = await connectSocket();
+      
+      // Configurar listeners para el nuevo socket
+      newSocket.on("resources", (data) => {
+        setResources(data);
+        updateHistoricalData(data);
+      });
+
+      newSocket.on("disconnect", () => {
+        setIsConnected(false);
+        setError("Desconectado del servidor");
+      });
+
+      setIsConnected(true);
       setError(null);
+      
+      // Solicitar recursos inmediatamente
+      newSocket.emit("get_resources");
     } catch (error) {
       setError("Error al reconectar");
       console.error("Error de reconexión:", error);
