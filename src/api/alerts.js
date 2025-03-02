@@ -1,12 +1,22 @@
 import axios from 'axios';
+import { authService } from './authService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const postAlert = async (alertData) => {
   try {
-    const response = await axios.post(`${API_URL}/alerts/create`, alertData, {
+    const user = authService.getCurrentUser();
+    if (!user || !user.id) {
+      throw new Error('Usuario no autenticado');
+    }
+
+    const response = await axios.post(`${API_URL}/alerts/create`, {
+      ...alertData,
+      user_id: user.id
+    }, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     return response.data;
